@@ -1,0 +1,287 @@
+---
+title: "Homework 2"
+author: "Tony Colucci/Naomi Kaduwela"
+date: "January 26, 2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(fpc)
+library(mclust)
+
+library(tidyverse)  # data manipulation
+library(cluster)    # clustering algorithms
+library(factoextra) # clustering algorithms & visualization
+```
+
+# 2
+```{r}
+rm(list = ls())
+#read in data
+nuoqiData <- read.csv("nuoqi.csv", stringsAsFactors = FALSE)
+#display structure
+str(nuoqiData)
+
+
+#code to create k means summary
+
+summary.kmeans = function(nuoqiKmeans) {
+p = ncol(nuoqiKmeans$centers)
+k = nrow(nuoqiKmeans$centers)
+n = sum(nuoqiKmeans$size)
+sse = sum(nuoqiKmeans$withinss)
+xbar = t(nuoqiKmeans$centers)%*%nuoqiKmeans$size/n
+ssb = sum(nuoqiKmeans$size*(nuoqiKmeans$centers - rep(1,k) %*% t(xbar))^2) 
+print(data.frame(
+n=c(nuoqiKmeans$size, n),
+Pct=(round(c(nuoqiKmeans$size, n)/n,2)),
+round(rbind(nuoqiKmeans$centers, t(xbar)), 2)
+#RMSE = round(sqrt(c(nuoqiKmeans$withinss/(p*(nuoqiKmeans$size-1)), rss/(p*(n-k)))), 4)
+))
+cat("SSE = ", sse, "; SSB = ", ssb, "\n")
+cat("R-Squared = ", ssb/(ssb+sse), "\n")
+cat("Pseudo F = ", (ssb/(k-1))/(sse/(n-k)), "\n\n");
+invisible(list(sse=sse, ssb=ssb, Rsqr=ssb/(ssb+sse), F=(ssb/(k-1))/(sse/(n-k))))
+}
+
+
+```
+
+## a)
+```{r}
+set.seed(12345)
+num_clusters = 5
+nuoqiKmeans <- kmeans(nuoqiData[,1:5], centers = num_clusters, nstart = 100, iter.max = 1000)
+
+nuoqiKmeans$centers
+nuoqiKmeans$size
+nuoqiKmeans$withinss
+nuoqiKmeans$betweenss
+
+summary(nuoqiKmeans)
+
+```
+#Model 1:
+SSE =  813.4389 ; 
+SSB =  1156.095 
+R-Squared =  0.5869891 
+Pseudo F =  351.4025 
+
+```{r}
+#violin plot 
+plot.kmeans = function(fit,boxplot=F) {
+  require(lattice)
+  p = ncol(fit$centers) 
+  k = nrow(fit$centers) 
+  plotdat = data.frame(
+    mu=as.vector(fit$centers),
+    clus=factor(rep(1:k, p)),
+    var=factor( 0:(p*k-1) %/% k, labels=colnames(fit$centers))
+  )
+  print(dotplot(var~mu|clus, data=plotdat,
+                panel=function(...){ 
+                  panel.dotplot(...) 
+                  panel.abline(v=0, lwd=.1)
+                },
+                layout=c(k,1), xlab="Cluster Mean"
+  )) 
+  invisible(plotdat) }
+
+plot(nuoqiKmeans)
+```
+Clusters 2, 4 and 5 contain people who gave approximately the same answers across all 5 questions, with cluster 2 having those people who responded lower, cluster 5 having people who responded higher and cluster 4 in the middle. Cluster 1 contains people who place high value on selfexpress.
+
+#Cluster 1 = self express
+#Cluster 2 = fashion enthusiast
+#Cluster 3 = evenly spread except for cross - functional
+#Cluster 4 = evenly spread - maybe cross
+#Cluster 5 = evenly spaced - impressive
+
+Within cluster sum of squares by cluster:
+[1] 158.9550 192.8771 144.1307 207.2093 110.2668
+ (between_SS / total_SS =  58.7 %)
+ 
+ 
+```{r}
+#plot 2D visual of cluster
+fviz_cluster(nuoqiKmeans, data = nuoqiData)
+```
+
+
+#Here we see a lot of overlap in clusters
+
+
+```{r}
+#see how euclidean distance is across cluster means 
+distance1 <- get_dist(nuoqiKmeans$centers)
+fviz_dist(distance1, gradient = list(low = "green", mid = "white", high = "red"))
+
+
+```
+
+
+
+## b)
+```{r}
+library(dplyr)
+#ipsatization 
+#standardize vriables by subtracing xbar (avg response for given respondent to all 5 point scales) by their variable value
+nuoqiDataIps <- mutate(nuoqiData,
+                    xbar = (fashethus + cross + functional + selfexpress + impress)/5,
+                    fashethusIps = fashethus - xbar,
+                    crossIps = cross - xbar,
+                    functionalIps = functional - xbar,
+                    selfexpressIps = selfexpress - xbar,
+                    impressIps = impress - xbar)
+```
+
+## c)
+```{r}
+set.seed(12345)
+nuoqiKmeansIps <- kmeans(nuoqiDataIps[,10:14], centers = num_clusters, nstart = 100, iter.max = 1000)
+
+nuoqiKmeansIps$centers
+nuoqiKmeansIps$size
+nuoqiKmeansIps$withinss
+nuoqiKmeansIps$betweenss
+nuoqiKmeans$tot.withinss
+
+
+plot(nuoqiKmeansIps)
+
+```
+#Still hard to tell clear segments between the 5 categoris...
+#Now All clusters are high on self express except cluster 4 and two is slightly less as well
+
+
+#Cluster 1 = self express
+#Cluster 2 = fashion enthusiast - self expressive 
+#Cluster 3 = evenly spread except for cross - self express/fashion enthuasiast 
+#Cluster 4 = evenly spread - maybe cross --> now might be functional
+#Cluster 5 = evenly spaced - impressive --> highest in self express
+
+```{r}
+summary(nuoqiKmeansIps)
+
+distance <- get_dist(nuoqiKmeansIps$centers)
+fviz_dist(distance, gradient = list(low = "#00AFBB", mid = "white", high = "#FC4E07"))
+
+fviz_cluster(nuoqiKmeansIps, data = nuoqiDataIps)
+```
+
+#We see in model two the clusters overlap more, SSE is lower as is the SSB in model 2
+#Model 1 has higher R^2 and F score
+
+#Model 2:
+SSE =  442.2794 ; 
+SSB =  368.0022 
+R-Squared =  0.4541658 
+Pseudo F =  205.7264 
+
+#Model 1:
+SSE =  813.4389 ; 
+SSB =  1156.095 
+R-Squared =  0.5869891 
+Pseudo F =  351.4025 
+
+
+## d)
+```{r}
+for (n_clust in 2:6) {
+  set.seed(12345)
+  nuoqiKmeans <- kmeans(nuoqiData[,1:5], centers = n_clust, nstart = 100, iter.max = 1000)
+  print(paste(n_clust, " cluster solution for untransformed data"))
+  print(nuoqiKmeans$centers)
+  print(nuoqiKmeans$size)
+  print(nuoqiKmeans$withinss)
+  print(nuoqiKmeans$betweenss)
+}
+
+for (n_clust in 2:6) {
+  set.seed(12345)
+  nuoqiKmeans <- kmeans(nuoqiDataIps[,10:14], centers = n_clust, nstart = 100, iter.max = 1000)
+  print(paste(n_clust, " cluster solution for ipsatized data"))
+  print(nuoqiKmeans$centers)
+  print(nuoqiKmeans$size)
+  print(nuoqiKmeans$withinss)
+  print(nuoqiKmeans$betweenss)
+}
+```
+
+```{r}
+#Elbow plot
+set.seed(123)
+View(nuoqiData)
+fviz_nbclust(nuoqiData[,1:5], kmeans, method = "wss") #total within-cluster sum of square 
+fviz_nbclust(nuoqiDataIps[,10:14], kmeans, method = "wss") #total within-cluster sum of square 
+
+
+```
+nuoqiData
+#The optimal number of clusters takes the biggest dip after 1 but around 3-4 clusters look like there's still sig decrease
+#Flattening off after 5
+
+nuoqiDataIps
+#Around 3 or 5 clusters, could try 8-9 also before it levels off
+
+```{r}
+
+#Added visualization to compare across clusters with different sizes 
+k2 <- kmeans(nuoqiData[,1:5], centers = 2, nstart = 25, iter.max = 1000)
+k3 <- kmeans(nuoqiData[,1:5], centers = 3, nstart = 25, iter.max = 1000)
+k4 <- kmeans(nuoqiData[,1:5], centers = 4, nstart = 25, iter.max = 1000)
+k5 <- kmeans(nuoqiData[,1:5], centers = 5, nstart = 25, iter.max = 1000)
+k6 <- kmeans(nuoqiData[,1:5], centers = 6, nstart = 25, iter.max = 1000)
+
+# plots to compare
+p2 <- fviz_cluster(k2, geom = "point", data = nuoqiData[,1:5]) + ggtitle("k = 2")
+p3 <- fviz_cluster(k3, geom = "point", data = nuoqiData[,1:5]) + ggtitle("k = 3")
+p4 <- fviz_cluster(k4, geom = "point",  data = nuoqiData[,1:5]) + ggtitle("k = 4")
+p5 <- fviz_cluster(k5, geom = "point",  data = nuoqiData[,1:5]) + ggtitle("k = 5")
+p6 <- fviz_cluster(k6, geom = "point",  data = nuoqiData[,1:5]) + ggtitle("k = 6")
+
+library(gridExtra)
+grid.arrange(p2, p3, p4, p5, p6, nrow = 2)
+
+
+
+#Added visualization to compare across clusters with different sizes - ipsatized
+ik2 <- kmeans(nuoqiDataIps[,10:14], centers = 2, nstart = 25, iter.max = 1000)
+ik3 <- kmeans(nuoqiDataIps[,10:14], centers = 3, nstart = 25, iter.max = 1000)
+ik4 <- kmeans(nuoqiDataIps[,10:14], centers = 4, nstart = 25, iter.max = 1000)
+ik5 <- kmeans(nuoqiDataIps[,10:14], centers = 5, nstart = 25, iter.max = 1000)
+ik6 <- kmeans(nuoqiDataIps[,10:14], centers = 6, nstart = 25, iter.max = 1000)
+
+# plots to compare
+ip2 <- fviz_cluster(ik2, geom = "point", data = nuoqiDataIps[,10:14]) + ggtitle("k = 2i")
+ip3 <- fviz_cluster(ik3, geom = "point", data = nuoqiDataIps[,10:14]) + ggtitle("k = 3i")
+ip4 <- fviz_cluster(ik4, geom = "point",  data = nuoqiDataIps[,10:14]) + ggtitle("k = 4i")
+ip5 <- fviz_cluster(ik5, geom = "point",  data = nuoqiDataIps[,10:14]) + ggtitle("k = 5i")
+ip6 <- fviz_cluster(ik6, geom = "point",  data = nuoqiDataIps[,10:14]) + ggtitle("k = 6i")
+
+grid.arrange(ip2, ip3, ip4, ip5, ip6, nrow = 2)
+
+```
+
+#The first version is better because the clusters are more sepearated; K=3 cluster looks the best
+#The ipsatized version has a lot of overlap between clusters which is not good for k means because it will result in misclassificaion. 
+
+
+## e)
+```{r}
+set.seed(12345)
+nuoqiGaussian <- Mclust(nuoqiData[,1:5], G=5)
+summary(nuoqiGaussian)
+plot(nuoqiGaussian)
+
+set.seed(12345)
+nuoqiGaussianIps <- Mclust(nuoqiDataIps[,10:14], G=5)
+summary(nuoqiGaussianIps)
+plot(nuoqiGaussianIps)
+```
+
+
