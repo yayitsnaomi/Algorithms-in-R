@@ -17,10 +17,9 @@ fit$merge
 
 #   - Distances:
 #       1. Numerical: account for differences in magnitude . r value determines how much weight to assign to dimensions with larger differences.
-#           - Chevbychev: d = max(5-1, 4-1) = 4 
-#           - Euclidean: d = sqrt((5-1)^2 + (4-1)^2) = 5
-#           - City Block: d = |5-1| + |4-1| = 7 ; r=1 and assigns the least weight to large differences, and supreme norm (r= infinity) equals the largest differences, ignoring smaller differences completely.
-
+#           - Chevbychev: d = max(5-1, 4-1) = 4 ; supreme norm (r= infinity) equals the largest differences, ignoring smaller differences completely.
+#           - Euclidean: d = sqrt((5-1)^2 + (4-1)^2) = 5 ; r=2
+#           - City Block: d = |5-1| + |4-1| = 7 ; r=1 and assigns the least weight to large differences,
 
 library(proxy)
 x = matrix(c(5,1,4,1), nrow=2)
@@ -39,7 +38,7 @@ pr_DB$get_entry_names() # lists all distance metrics
 #             - Pearson correlation: evaluates angle centered at point of means.  When people have systematic biases that shift the magnitude of their measures, it helps to mean center (ipsatize) the rows.
 
 # Example comparing cosine vs pearson distances
-X = matrix(c(1,2,3,10, 11, 12), nrow=2) # cosine and pearson give different result
+X = matrix(c(1,7,2,8,3,9), nrow=2) # cosine and pearson give different result
 simil(X, "cosine") #cosine=0.9098763
 simil(X) # Pearson=0.7857143
 
@@ -71,3 +70,5 @@ simil(x, method="cosine")
 
 simil(x, method="Jaccard")
 simil(x, method="Pearson") # If 0 means unknown, pearson will be different
+
+simil(x, method="simple matching") 
