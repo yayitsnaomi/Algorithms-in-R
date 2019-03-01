@@ -1,6 +1,5 @@
 #Naomi Kaduwela
 #Feb 13
-#Predictive Analytics 2 - Midterm Notes
 
 rm(list = ls())
 
