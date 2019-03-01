@@ -1,6 +1,5 @@
 #Naomi Kaduwela
 #Feb 11
-#Predictive Analytics 2 - Midterm Notes
 
 rm(list = ls())
 
@@ -406,10 +405,10 @@ FGL1[1:k]<-sapply(FGL1[1:k], function(x) (x-mean(x))/sd(x)) #standardize predict
 
 
 #############Fit a neural network classification model to the FGL1 data######   slide 61
-#knows it’s binary by looking at response (if it is a factor: as.factor())  
+#knows it’s binary by looking at response (if it is a factor: as.factor()) 
 library(nnet)
 fgl.nn1<-nnet(type_bin~., FGL1[,c(1:9,11)], linout=F, skip=F, size=10, decay=.05, maxit=1000, trace=F)
-#for classification you cannot use linear, have to use logistic…. linout =F 
+#for classification you cannot use linear, have to use logistic…. linout =F
 phat<-as.numeric(predict(fgl.nn1)) #predicted probabilities - vector same length as training rows 
 #and each output is predicted prob that the response = 1 for that row 
 y<-FGL1[[12]] 
